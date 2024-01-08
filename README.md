@@ -12,7 +12,7 @@ code in the larger project. Most of the code is taken from my current project "A
 
 **[ArmaCulture](https://store.steampowered.com/app/1617190/ArmaCulture/?curator_clanid=42575477)**
 
-![ASOS Logo](img/aug23_header_capsule.png)
+![AC Logo](img/ac_header.png)
 
 - Steam score: 9/10, 10,000 downloads. 
 - Indie factory-builder RPG set in a fictional war following a farmer attempting to survive under a fascist regime. Developed and published on Steam by me, all art, music, programming, and writing was done by me independently.
