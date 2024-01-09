@@ -1,7 +1,7 @@
 # Game Code portfolio for Luca Sandoval
 
-A selection of code from various projects I have worked on. Each will feature a README.md that gives context about the purpose of the 
-code in the larger project. Most of the code is taken from my current project "A Song of Sunlight," but all my projects are linked below.
+A selection of code from various projects I have worked on. All the code featured in this repository was written solely by me. Each directory will feature a README.md that gives context about the purpose of the 
+code samples in the larger project. Most of the code is taken from my current project "A Song of Sunlight," but all my projects are linked below.
 
 **[A Song Of Sunlight](https://store.steampowered.com/app/2263250/A_Song_Of_Sunlight/?curator_clanid=42575477)**
 
