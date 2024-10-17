@@ -25,9 +25,4 @@ public class Sound : ScriptableObject
     public bool loop; // Should this sound loop itself? 
 
     public AudioMixerGroup audioMixerGroup; // Which audio mixer group (SFX vs. Music does this belong to?) 
-
-    public bool isBackgroundNoise; // Is this a 'background noise' such as wind, rain, etc.. (Considered for special functions.) 
-
-    [HideInInspector]
-    public AudioSource source; // AudioSource associated with this sound.
 }
