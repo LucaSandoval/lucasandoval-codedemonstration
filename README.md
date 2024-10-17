@@ -1,7 +1,7 @@
 # Game Code portfolio for Luca Sandoval
 
-**Hello! If you'd like to know where to start, please take a look at the Sound System directory.
-**
+**Hello! If you'd like to know where to start, please take a look at the Sound System directory.**
+
 This repository serves as a code selection from various projects I have worked on. I wrote all the code featured in this repository. Each directory will feature a README.md that gives context about the purpose of the 
 code samples in the larger project. Most of the code is taken from my current project "A Song of Sunlight," but all my projects are linked below.
 
