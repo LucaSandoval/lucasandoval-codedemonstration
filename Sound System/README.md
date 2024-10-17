@@ -1,7 +1,6 @@
-# Sound System snipped taken from "ArmaCulture" and "A Song of Sunlight"
+# Sound System snipped taken from "Rusalka"
 
 Link to [STEAM PAGE](https://store.steampowered.com/app/1617190/ArmaCulture/?curator_clanid=42575477).
 
-The following is the base code that handles the Sound System in both of my games. It's extremely versatile, with support for nearly any common sound need in a game- such as fading sounds in and out,
-layered sounds (for dynamic music etc..), playing sounds at random pitches and so forth. I've chosen this as it makes use of Scriptable Objects to make it extremely easy to add and tweak sounds in engine,  
-as well as for its 'plug and play' nature which has allowed me to utilize it in both of my main games with almost no tweaks at all. 
+The following is the base code that handles the Sound System in all of my projects- this particular version is the latest, adapted for Rusalka. It's extremely versatile, with support for nearly any common sound need in a game- such as fading sounds in and out,
+layered sounds (for dynamic music etc..), playing sounds at random pitches and so forth. The system was designed to be as 'plug and play' as possible- requiring essentially only the import of these two scripts to function. The sound player is a singleton that provides public methods for controlling sounds from wherever they are needed in the Unity project. Sounds are stored as scriptable objects with tweakable parameters for rapid iteration on sound effect volume, looping, and pitch settings. 
