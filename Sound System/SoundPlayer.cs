@@ -1,77 +1,97 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System;
 using UnityEngine.Audio;
 
-// This is the master sound player. Sounds can be added to the sound player from the inspector, or done
-// programmatically by adding sounds when they are needed. Contains a wide variety of functionality for playing
-// different sounds in a game: Playing/Pausing/Stopping, Fading In/Out, Playing at a random pitch, CrossFading,
-// playing layered sounds (useful if you have dynamic audio layers), 
-
-public class SoundPlayer : MonoBehaviour
+/// <summary>
+/// A Singleton class for playing and manipulating sounds. Any sound effect or song you want to play must first be created
+/// as a scriptable object (Sound.cs) and then referenced by the name given there for all functions.
+/// </summary>
+public class SoundPlayer : Singleton<SoundPlayer>
 {
-    public List<Sound> sounds; //The list of all sounds/songs used in this level, scene etc. There should only be 1 sound of each name.
-
-    public LayeredSound[] layeredSounds; //The list of all the layered sounds/songs for this context. Composed of several sounds. 
-
-    private List<string> loopingSounds; //All the sounds that are looping in given context (bg music or sfx etc...)
-
-    //Should always be 1:1 in terms of sounds that should be fading and their fade rate (same size, same index)
+    // The path in the Resources Folder with which to look for Sound scriptable objects.
+    public string SoundLookupPath;
+    // If you would like an AudioSource to be generated for any sounds on Awake instead of at 
+    // runtime, list them in the inspector here.
+    public List<Sound> Sounds; 
+    // Internal map for keeping track of Sounds and their associated Audio Sources. 
+    private Dictionary<string, Tuple<Sound, AudioSource>> SoundLookup;
+    // All the sounds that are looping in given context (bg music or sfx etc...)
+    private List<string> loopingSounds; 
+    // Should always be 1:1 in terms of sounds that should be fading and their fade rate (same size, same index)
     private List<string> soundsToFade;
     private List<float> soundFadeRate;
     private List<bool> fadeINOUTRequests;
-
+    // Parent object for one shot type sounds in the editor. Automatically generated in Awake. 
     private GameObject oneShotParent;
 
-    private bool backGroundSoundsMutedGlobally;
-
-    private RoomController roomController;
-
-    [System.Serializable]
-    public struct LayeredSound
+    protected override void Awake()
     {
-        public string layeredSoundName;
-        public Sound[] layers;
-    }
-
-    public void Awake()
-    {
-        roomController = GameObject.Find("GameController").GetComponent<RoomController>();
-        oneShotParent = GameObject.Find("OneShotParent");
+        base.Awake();
+        SoundLookup = new Dictionary<string, Tuple<Sound, AudioSource>>();
+        
+        // Set up one shot parent
+        oneShotParent = new GameObject();
+        oneShotParent.transform.SetParent(transform);
 
         loopingSounds = new List<string>();
         soundsToFade = new List<string>();
         soundFadeRate = new List<float>();
         fadeINOUTRequests = new List<bool>();
 
-        //Create an audio source for each non-looping sound effect to share. 
-        foreach (Sound s in sounds)
+        //Create an audio source for each sound present before runtime in the inspector.
+        foreach (Sound s in Sounds)
         {
             GenerateAudioSource(s);
         }
+    }
 
-        //Layers in a layered sound must be looping, and each get their own audio source as a result. 
-        for (int i = 0; i < layeredSounds.Length; i++)
+    //Given the name of a Sound, create an AudioSource and add it to the controller object with the specified settings.
+    //Returns true if the audio source was created sucessfully. 
+    private bool GenerateAudioSource(string soundName)
+    {
+        string FullPath = SoundLookupPath + "/" + soundName;
+        Sound Sound = Resources.Load<Sound>(FullPath);
+        if (Sound != null)
         {
-            foreach (Sound s in layeredSounds[i].layers)
-            {
-                GenerateAudioSource(s);
-            }
+            return GenerateAudioSource(Sound);
+        } else
+        {
+            Debug.LogWarning("No sound found at " + FullPath);
+            return false;
         }
     }
 
-    //Given a Sound, create an AudioSource and add it to the controller object with the specified settings
-    public void GenerateAudioSource(Sound s)
+    // Overloaded version of the function taking in a Sound class instead.
+    private bool GenerateAudioSource(Sound s)
     {
-        s.source = gameObject.AddComponent<AudioSource>();
-        s.source.clip = s.clip;
-        s.source.volume = s.baseVolume;
-        s.source.pitch = s.basePitch;
-        s.source.loop = s.loop;
-        s.source.outputAudioMixerGroup = s.audioMixerGroup;
+        AudioSource NewSource = gameObject.AddComponent<AudioSource>();
+        NewSource.clip = s.Clip;
+        NewSource.volume = s.BaseVolume;
+        NewSource.pitch = s.BasePitch;
+        NewSource.loop = s.ShouldLoop;
+        NewSource.outputAudioMixerGroup = s.AudioMixerGroup;
+
+        SoundLookup.Add(s.SoundName, new Tuple<Sound, AudioSource>(s, NewSource));
+        return true;
     }
 
-    public void FixedUpdate()
+    // Checks if the given sound by name can be played. If the sound doesn't currently
+    // have an audio source, one will be created. Will only return false if creating
+    // the audio source failed- ie. the sound cannot be loaded from the given resource path.
+    private bool CanPlaySound(string soundName)
+    {
+        if (GetSourceByName(soundName) == null)
+        {
+            return GenerateAudioSource(soundName);
+        } else
+        {
+            return true;
+        }
+    }
+
+    public void Update()
     {
         for (int i = 0; i < loopingSounds.Count; i++)
         {
@@ -85,9 +105,10 @@ public class SoundPlayer : MonoBehaviour
                         //IN
 
                         //If there is a looping sound that gets a fade request, decrease its volume by the rate
-                        getSourceByName(loopingSounds[i]).volume += Time.deltaTime * soundFadeRate[x];
+                        float baseVolume = GetSoundByName(loopingSounds[i]).BaseVolume;
+                        GetSourceByName(loopingSounds[i]).volume += baseVolume * Time.deltaTime * soundFadeRate[x];
                         //If this makes it silent, pause the sound.
-                        if (getSourceByName(loopingSounds[i]).volume >= getSoundBaseVolume(loopingSounds[i]))
+                        if (GetSourceByName(loopingSounds[i]).volume >= GetSoundBaseVolume(loopingSounds[i]))
                         {
                             soundsToFade.Remove(soundsToFade[x]);
                             soundFadeRate.Remove(soundFadeRate[x]);
@@ -99,9 +120,10 @@ public class SoundPlayer : MonoBehaviour
                         //OUT
 
                         //If there is a looping sound that gets a fade request, decrease its volume by the rate
-                        getSourceByName(loopingSounds[i]).volume -= Time.deltaTime * soundFadeRate[x];
+                        float baseVolume = GetSoundByName(loopingSounds[i]).BaseVolume;
+                        GetSourceByName(loopingSounds[i]).volume -= baseVolume * Time.deltaTime * soundFadeRate[x];
                         //If this makes it silent, pause the sound.
-                        if (getSourceByName(loopingSounds[i]).volume <= 0)
+                        if (GetSourceByName(loopingSounds[i]).volume <= 0)
                         {
                             //PauseSound(loopingSounds[i]);
                             soundsToFade.Remove(soundsToFade[x]);
@@ -114,415 +136,235 @@ public class SoundPlayer : MonoBehaviour
         }
     }
 
-    // Cross fade two sounds given a rate. 
-    public void CrossFade(string outSong, string inSong, float rate)
+    /// <summary>
+    /// Given the name of two sounds, fades out the first and fades in the second over the given
+    /// time in seconds. 
+    /// </summary>
+    public void CrossFade(string outSong, string inSong, float crossFadeTime)
     {
-        FadeOutSound(outSong, rate);
-        FadeInSound(inSong, rate, 0);
+        FadeOutSound(outSong, crossFadeTime);
+        FadeInSound(inSong, crossFadeTime, 0);
     }
 
-    // Plays a sound at a random pitch within given range. 
-    public void PlaySoundRandomPitch(string name, float range)
+    /// <summary>
+    /// Given the name of a sound, plays it with its base pitch randomly modified by the given variance. 
+    /// </summary>
+    public void PlaySoundRandomPitch(string soundName, float pitchVariance)
     {
-        foreach (Sound s in sounds)
+        if (CanPlaySound(soundName))
         {
-            if (s.soundName == name)
+            AudioSource Source = GetSourceByName(soundName);
+            Sound SoundObject = GetSoundByName(soundName);
+
+            Source.Stop();
+            Source.Play();
+            Source.pitch = SoundObject.BasePitch + UnityEngine.Random.Range(-pitchVariance, pitchVariance);
+
+            Source.volume = SoundObject.BaseVolume;
+
+            if (SoundObject.ShouldLoop)
             {
-                s.source.Stop();
-                s.source.Play();
-                s.source.pitch = s.basePitch + Random.Range(-range, range);
-
-                s.source.volume = s.baseVolume;
-
-                if (s.loop)
+                if (!loopingSounds.Contains(SoundObject.SoundName))
                 {
-                    if (!loopingSounds.Contains(s.soundName))
-                    {
-                        loopingSounds.Add(s.soundName);
-                    }
+                    loopingSounds.Add(SoundObject.SoundName);
                 }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Given the name of a sound, plays it as a one shot with its base pitch randomly modified by the given variance.
+    /// Useful if you want to play the same sound many times in a row with overlap between them as one shots are each a
+    /// temporary unique audio source. 
+    /// </summary>
+    public void PlaySoundOneShotRandomPitch(string soundName, float pitchVariance)
+    {
+        if (CanPlaySound(soundName))
+        {
+            PlaySoundOneShotRandomPitch(soundName, pitchVariance, GetSoundBaseVolume(soundName));
+        }
+    }
+
+    /// <summary>
+    /// Overload of the same function allowing specification of the base volume. 
+    /// </summary>
+    public void PlaySoundOneShotRandomPitch(string soundName, float pitchVariance, float basevolume)
+    {
+        if (CanPlaySound(soundName))
+        {
+            Sound SoundObject = GetSoundByName(soundName);
+
+            GameObject newOneShot = new GameObject();
+            newOneShot.transform.SetParent(oneShotParent.transform);
+            AudioSource source = newOneShot.AddComponent<AudioSource>();
+            source.outputAudioMixerGroup = SoundObject.AudioMixerGroup;
+            source.clip = SoundObject.Clip;
+            source.volume = basevolume;
+            source.pitch = SoundObject.BasePitch + UnityEngine.Random.Range(-pitchVariance, pitchVariance);
+            source.Play();
+
+            Destroy(newOneShot, SoundObject.Clip.length);
+        }
+    }
+
+    // Given the name of a sound, returns its base volume as defined in the sound scriptable object. 
+    private float GetSoundBaseVolume(string soundName)
+    {
+        if (SoundLookup.ContainsKey(soundName))
+        {
+            return SoundLookup[soundName].Item1.BaseVolume;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+
+    /// <summary>
+    /// Play given looping or non-looping sound by name. Volume will be set to base volume. 
+    /// </summary>
+    public void PlaySound(string soundName)
+    {
+        if (CanPlaySound(soundName))
+        {
+            AudioSource Source = GetSourceByName(soundName);
+            Sound SoundObject = GetSoundByName(soundName);
+            Source.Stop();
+            Source.Play();
+            Source.pitch = SoundObject.BasePitch;
+            Source.volume = SoundObject.BaseVolume;
+            if (SoundObject.ShouldLoop)
+            {
+                if (!loopingSounds.Contains(soundName))
+                {
+                    loopingSounds.Add(soundName);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Pause given sound by name.
+    /// </summary>
+    public void PauseSound(string soundName)
+    {
+        if (GetSourceByName(soundName) != null)
+        {
+            AudioSource Source = GetSourceByName(soundName);
+            Sound SoundObject = GetSoundByName(soundName);
+            Source.Pause();
+            if (SoundObject.ShouldLoop)
+            {
+                loopingSounds.Remove(SoundObject.SoundName);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Fades out looping sound to silence over the given time in seconds.
+    /// </summary>
+    public void FadeOutSound(string soundName, float fadeTime)
+    {
+        if (CanPlaySound(soundName))
+        {
+            float FadeRate = 1 / fadeTime;
+            Sound SoundObject = GetSoundByName(soundName);
+            
+            if (SoundObject.ShouldLoop == false)
+            {
                 return;
             }
-        }
-    }
 
-    // Play sound as a one shot with a random pitch. 
-    public void PlaySoundOneShotRandomPitch(string name, float range)
-    {
-        foreach (Sound s in sounds)
-        {
-            if (s.soundName == name)
+            if (soundsToFade.Contains(soundName))
             {
-                GameObject newOneShot = new GameObject();
-                newOneShot.transform.SetParent(oneShotParent.transform);
-                AudioSource source = newOneShot.AddComponent<AudioSource>();
-                source.outputAudioMixerGroup = s.audioMixerGroup;
-                source.clip = s.clip;
-                source.volume = s.baseVolume;
-                source.pitch = s.basePitch + Random.Range(-range, range);
-                source.Play();
-
-                Destroy(newOneShot, s.clip.length);
+                // This sound is already being faded. Interrupt and replace it.
+                StopSoundFade(soundName);
             }
+
+            soundsToFade.Add(soundName);
+            soundFadeRate.Add(FadeRate);
+            fadeINOUTRequests.Add(false);
         }
     }
 
-    //Play given looping or non-looping sound by name. Volume will be set to base volume. 
-    public void PlaySound(string name)
+    /// <summary>
+    /// Checks if given sound by name is current being faded in/out.
+    /// </summary>
+    public bool IsSoundBeingFaded(string soundName)
     {
-        foreach (Sound s in sounds)
+        return soundsToFade.Contains(soundName);
+    }
+
+    /// <summary>
+    /// Immediately interrupts the fading in/out of a given sound by name.
+    /// </summary>
+    public void StopSoundFade(string soundName)
+    {
+        fadeINOUTRequests.RemoveAt(soundsToFade.IndexOf(soundName));
+        soundFadeRate.RemoveAt(soundsToFade.IndexOf(soundName));
+        soundsToFade.Remove(soundName);
+    }
+
+    /// <summary>
+    /// Fades in a looping sound from the start volume to its base volume over the given time in seconds.
+    /// </summary>
+    public void FadeInSound(string soundName, float fadeTime, float startVol)
+    {
+        if (CanPlaySound(soundName))
         {
-            if (s.soundName == name)
+            float FadeRate = 1 / fadeTime;
+            AudioSource Source = GetSourceByName(soundName);
+            Sound SoundObject = GetSoundByName(soundName);
+
+            if (SoundObject.ShouldLoop == false)
             {
-                s.source.Stop();
-                s.source.Play();
-                s.source.pitch = s.basePitch;
-
-                if (s.isBackgroundNoise)
-                {
-                    s.source.volume = backGroundSoundsMutedGlobally ? 0f : s.baseVolume;
-                } else
-                {
-                    s.source.volume = s.baseVolume;
-                }
-
-                if (s.loop)
-                {
-                    if (!loopingSounds.Contains(s.soundName))
-                    {
-                        loopingSounds.Add(s.soundName);
-                    }
-
-                    //Prevents error after skipping music in cutscenes
-                    //if (soundsToFade.Contains(s.soundName))
-                    //{
-                    //    soundsToFade.Remove(s.soundName);
-                    //}
-                }
                 return;
             }
-        }
 
-        for (int i = 0; i < layeredSounds.Length; i++)
-        {
-            for (int x = 0; x < layeredSounds[i].layers.Length; x++)
+            if (soundsToFade.Contains(soundName))
             {
-                if (layeredSounds[i].layers[x].soundName == name)
-                {
-                    layeredSounds[i].layers[x].source.Play();
-                    layeredSounds[i].layers[x].source.volume = layeredSounds[i].layers[x].baseVolume;
-
-                    if (layeredSounds[i].layers[x].loop)
-                    {
-                        if (!loopingSounds.Contains(layeredSounds[i].layers[x].soundName))
-                        {
-                            loopingSounds.Add(layeredSounds[i].layers[x].soundName);
-                        }
-                    }
-
-                    return;
-                }
+                // This sound is already being faded. Interrupt and replace it.
+                StopSoundFade(soundName);
             }
+
+            soundsToFade.Add(soundName);
+            soundFadeRate.Add(FadeRate);
+            fadeINOUTRequests.Add(true);
+
+            PlaySound(SoundObject.SoundName);
+            Source.volume = startVol;
         }
     }
 
-    //Pause given sound by name.
-    public void PauseSound(string name)
+    // Given the name of a sound, returns the associated AudioSource. 
+    private AudioSource GetSourceByName(string soundName)
     {
-        foreach (Sound s in sounds)
+        if (SoundLookup.ContainsKey(soundName))
         {
-            if (s.soundName == name)
-            {
-                s.source.Pause();
-                if (s.loop)
-                {
-                    loopingSounds.Remove(s.soundName);
-                }
-                return;
-            }
-        }
-
-        for (int i = 0; i < layeredSounds.Length; i++)
+            return SoundLookup[soundName].Item2;
+        } else
         {
-            for (int x = 0; x < layeredSounds[i].layers.Length; x++)
-            {
-                if (layeredSounds[i].layers[x].soundName == name)
-                {
-                    if (layeredSounds[i].layers[x].loop)
-                    {
-                        layeredSounds[i].layers[x].source.Pause();
-                        loopingSounds.Remove(layeredSounds[i].layers[x].soundName);
-                    }
-                    return;
-                }
-            }
+            return null;
         }
     }
 
-    //Plays a layered sound. All layers will be played with the corresponding volume number in the given array.
-    public void PlayLayeredSound(string name, float[] volumeLevels)
+    // Given the name of a sound, returns the corresponding Sound scriptable object.
+    private Sound GetSoundByName(string soundName)
     {
-        foreach (LayeredSound s in layeredSounds)
+        if (SoundLookup.ContainsKey(soundName))
         {
-            if (s.layeredSoundName == name)
-            {
-                if (volumeLevels.Length == 0 || volumeLevels.Length > s.layers.Length)
-                {
-                    Debug.LogWarning("Given layer volume levels doesn't match number of layers for sound: " + name);
-                    return;
-                }
-
-                for (int i = 0; i < s.layers.Length; i++)
-                {
-                    s.layers[i].source.Stop();
-                    s.layers[i].source.Play();
-                    s.layers[i].source.volume = volumeLevels[i];
-
-                    if (s.layers[i].loop)
-                    {
-                        if (!loopingSounds.Contains(s.layers[i].soundName))
-                        {
-                            loopingSounds.Add(s.layers[i].soundName);
-                        }
-                    }
-                }
-                return;
-            }
+            return SoundLookup[soundName].Item1;
+        }
+        else
+        {
+            return null;
         }
     }
 
-    //Fades out looping sound to silence at a given rate. Not used with Layered Sounds. 
-    public void FadeOutSound(string name, float rate)
+    /// <summary>
+    /// Returns true if a given looping sound is currently playing.
+    /// </summary>
+    public bool IsSoundPlaying(string soundName)
     {
-        foreach (Sound s in sounds)
-        {
-            if (s.soundName == name)
-            {
-                if (s.loop == false)
-                {
-                    return;
-                }
-
-                if (soundsToFade.Contains(name))
-                {
-                    // This sound is already being faded. Interrupt and replace it.
-                    StopSoundFade(name);
-                }
-
-                soundsToFade.Add(name);
-                soundFadeRate.Add(rate);
-                fadeINOUTRequests.Add(false);
-                return;
-            }
-        }
+        return loopingSounds.Contains(soundName);
     }
-
-    // Checks if given sound by name is current being faded in/out.
-    public bool IsSoundBeingFaded(string name)
-    {
-        return soundsToFade.Contains(name);
-    }
-
-    // Immediately interrupts the fading in/out of a given sound by name.
-    public void StopSoundFade(string name)
-    {
-        fadeINOUTRequests.RemoveAt(soundsToFade.IndexOf(name));
-        soundFadeRate.RemoveAt(soundsToFade.IndexOf(name));
-        soundsToFade.Remove(name);
-    }
-
-    //Fades IN looping sound, playing it. Not used with Layered Sounds. 
-
-    public void FadeInSound(string name, float rate, float startVol)
-    {
-        foreach (Sound s in sounds)
-        {
-            if (s.soundName == name)
-            {
-                if (s.loop == false)
-                {
-                    return;
-                }
-
-                if (soundsToFade.Contains(name))
-                {
-                    // This sound is already being faded. Interrupt and replace it.
-                    StopSoundFade(name);
-                }
-
-                soundsToFade.Add(name);
-                soundFadeRate.Add(rate);
-                fadeINOUTRequests.Add(true);
-
-                PlaySound(s.soundName);
-                s.source.volume = startVol;
-                return;
-            }
-        }
-    }
-
-    //Fades out given layer to silence in layered sound with rate.
-    public void FadeOutLayer(string name, int layerID, float rate)
-    {
-        foreach (LayeredSound s in layeredSounds)
-        {
-            if (name == s.layeredSoundName)
-            {
-                if (layerID < s.layers.Length)
-                {
-                    if (soundsToFade.Contains(s.layers[layerID].soundName))
-                    {
-                        return;
-                    }
-
-                    soundsToFade.Add(s.layers[layerID].soundName);
-                    soundFadeRate.Add(rate);
-                    fadeINOUTRequests.Add(false);
-                    return;
-                }
-                else
-                {
-                    Debug.LogWarning("Given layer ID not in given layer name.");
-                }
-            }
-        }
-    }
-
-    //Fades in layer in layered sound with rate. Will not play the layer if it isn't already playing. 
-    public void FadeInLayer(string name, int layerID, float rate)
-    {
-        foreach (LayeredSound s in layeredSounds)
-        {
-            if (name == s.layeredSoundName)
-            {
-                if (layerID < s.layers.Length)
-                {
-                    if (soundsToFade.Contains(s.layers[layerID].soundName))
-                    {
-                        return;
-                    }
-
-                    soundsToFade.Add(s.layers[layerID].soundName);
-                    soundFadeRate.Add(rate);
-                    fadeINOUTRequests.Add(true);
-                    return;
-                }
-                else
-                {
-                    Debug.LogWarning("Given layer ID not in given layer name.");
-                }
-            }
-        }
-    }
-
-    //Sets layer of given layered sound volume to given volume as a percentage out of 100. (0% = silent, 100% = full baseVolume).
-    public void SetLayerVolume(string name, int layerID, float percent)
-    {
-        foreach (LayeredSound s in layeredSounds)
-        {
-            if (name == s.layeredSoundName)
-            {
-                if (layerID < s.layers.Length)
-                {
-                    float newVol = s.layers[layerID].baseVolume * (percent / 100);
-                    s.layers[layerID].source.volume = newVol;
-                    return;
-                }
-                else
-                {
-                    Debug.LogWarning("Given layer ID not in given layer name.");
-                }
-            }
-        }
-    }
-
-
-
-    //Internal Functions//
-
-    //Used internal to get AudioSource object of given sound.
-    public AudioSource getSourceByName(string name)
-    {
-        foreach (Sound s in sounds)
-        {
-            if (s.soundName == name)
-            {
-                return s.source;
-            }
-        }
-
-        for (int i = 0; i < layeredSounds.Length; i++)
-        {
-            for (int x = 0; x < layeredSounds[i].layers.Length; x++)
-            {
-                if (layeredSounds[i].layers[x].soundName == name)
-                {
-                    return layeredSounds[i].layers[x].source;
-                }
-            }
-        }
-
-        return null;
-    }
-
-    //Used internally to get base volume of audio source of given sound.
-    private float getSoundBaseVolume(string name)
-    {
-        foreach (Sound s in sounds)
-        {
-            if (s.soundName == name)
-            {
-                return s.baseVolume;
-            }
-        }
-
-        for (int i = 0; i < layeredSounds.Length; i++)
-        {
-            for (int x = 0; x < layeredSounds[i].layers.Length; x++)
-            {
-                return layeredSounds[i].layers[x].baseVolume;
-            }
-        }
-
-        return 1;
-    }
-
-    public bool isSoundPlaying(string name)
-    {
-        return loopingSounds.Contains(name);
-    }
-
-    //Go through all looping (current) sounds and fade out any that are marked
-    //as being 'background sounds'.
-    public void MuteAllBackgroundSounds(float rate)
-    {
-        backGroundSoundsMutedGlobally = true;
-        for (int i = 0; i < sounds.Count; i++)
-        {
-            if (sounds[i].isBackgroundNoise)
-            {
-                if (isSoundPlaying(sounds[i].soundName))
-                {
-                    FadeOutSound(sounds[i].soundName, rate);
-                }              
-            }
-        }
-    }
-
-    // Searches through and unmutes all sounds marked as 'background sounds.'
-    public void UnMuteAllBackgroundSounds(float rate)
-    {
-        backGroundSoundsMutedGlobally = false;
-        for (int i = 0; i < sounds.Count; i++)
-        {
-            if (sounds[i].isBackgroundNoise)
-            {
-                if (IsSoundRoomAmbientSound(sounds[i]))
-                {
-                    FadeInSound(sounds[i].soundName, rate, 0);
-                }
-            }
-        }
-    }
-
-}
