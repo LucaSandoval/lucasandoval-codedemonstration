@@ -7,7 +7,7 @@ code samples in the larger project. Links to some of the projects featured:
 
 **[A Song Of Sunlight](https://store.steampowered.com/app/2263250/A_Song_Of_Sunlight/?curator_clanid=42575477)**
 
-<img src="img/header_capsule_new.png" alt="ASOS Logo" width="900" height="400"/>
+<img src="img/header_capsule_new.png" alt="ASOS Logo" width="540" height="200"/>
 
 - My upcoming second game, is being developed solo. 
 - Set in an extremely distant future, the player is tasked with finding salvation for their people by descending an endless megastructure stretching into the earth. Explores the breakdown of human relationships and the human desire to bury past mistakes.
