@@ -1,2 +1,7 @@
+# Tile System taken from "Schematica"
+
+Link to [Steam page](https://store.steampowered.com/app/3725600/Schematica/).
+
 The following is the core 'tile system' from a game I worked on called "Schematica." This was an interesting challenge due to how flexible the system needed to be to support a large variety of different tiles with different abilities- one of my main design goals being the utilization of OOD principles to make future additions to the project as seamless as possible. 
+
 Tiles were defined using scriptable objects which store tile stat information and a reference to a unique behavior script for that tile. Using scriptible objects had the benefit of exposing tweakable tile stats (like health, damage, speed etc...) to the engine in a designer friendly manner that facilitated rapid iteration. The tile behavior scripts inherited from the base ATile script (handling universal mechanics) which allowed tiles with unique features to simply override any functions needed for their mechanics without any code duplication. Overall this led to a separation of behaviors that kept code clean, maintainable, and quick to iterate upon. 
