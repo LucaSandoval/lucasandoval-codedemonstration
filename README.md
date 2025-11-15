@@ -14,20 +14,20 @@ code samples in the larger project. Links to some of the projects featured:
 
 **[Schematica](https://store.steampowered.com/app/3725600/Schematica/)**
 
-![Schematica Logo](img/schematica_cover.png)
+<img src="img/schematica_cover.png" alt="ASOS Logo" width="460" height="215"/>
 
 - Developed Schematica, a fully procedural action rougelike, on a team of four as a lead programmer.
 
 **[Rusalka](https://ragefordragons.itch.io/rusalka)**
 
-![Rusalka Logo](img/rusalka_capsule.png)
+<img src="img/rusalka_capsule.png" alt="ASOS Logo" width="460" height="215"/>
 
 - I Developed Rusałka, a 2D narrative platformer, alongside a team of eight other interdisciplinary students. 
 - Implemented core gameplay systems, including player controller and physics, sound control, and menus.
 
 **[ArmaCulture](https://store.steampowered.com/app/1617190/ArmaCulture/?curator_clanid=42575477)**
 
-![AC Logo](img/ac_header.png)
+<img src="img/ac_header.png" alt="ASOS Logo" width="460" height="215"/>
 
 - Steam score: 9/10, 10,000 downloads. 
 - Indie factory-builder RPG set in a fictional war following a farmer attempting to survive under a fascist regime. Developed and published on Steam by me, all art, music, programming, and writing was done by me independently.
