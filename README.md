@@ -7,10 +7,16 @@ code samples in the larger project. Links to some of the projects featured:
 
 **[A Song Of Sunlight](https://store.steampowered.com/app/2263250/A_Song_Of_Sunlight/?curator_clanid=42575477)**
 
-![ASOS Logo](img/aug23_header_capsule.png)
+![ASOS Logo](img/header_capsule_new.png)
 
 - My upcoming second game, is being developed solo. 
 - Set in an extremely distant future, the player is tasked with finding salvation for their people by descending an endless megastructure stretching into the earth. Explores the breakdown of human relationships and the human desire to bury past mistakes.
+
+**[Schematica](https://store.steampowered.com/app/3725600/Schematica/)**
+
+![Schematica Logo](img/schematica_cover)
+
+- Developed Schematica, a fully procedural action rougelike, on a team of four as a lead programmer.
 
 **[Rusalka](https://ragefordragons.itch.io/rusalka)**
 
