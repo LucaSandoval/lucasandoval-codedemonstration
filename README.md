@@ -14,7 +14,7 @@ code samples in the larger project. Links to some of the projects featured:
 
 **[Schematica](https://store.steampowered.com/app/3725600/Schematica/)**
 
-![Schematica Logo](img/schematica_cover)
+![Schematica Logo](img/schematica_cover.png)
 
 - Developed Schematica, a fully procedural action rougelike, on a team of four as a lead programmer.
 
